@@ -13,6 +13,8 @@ import (
 	"regexp"
 
 	"code.google.com/p/gcfg"
+	//"gopkg.in/libgit2/git2go.v22"
+	"github.com/libgit2/git2go"
 )
 
 var debug bool
@@ -129,6 +131,14 @@ func readConfigfile(configFile string) ConfigSettings {
 	return ConfigSettings{mainCfgSection, gitCfgSection, forgeCfgSection}
 }
 
+func credentialsCallback(url string, username string, allowedTypes git.CredType) (git.ErrorCode, *git.Cred) {
+	Debugf("Using as ssh_pub_key: " + mainCfgSection["ssh_pub_key"])
+	Debugf("Using as ssh_priv_key: " + mainCfgSection["ssh_priv_key"])
+	ret, cred := git.NewCredSshKeyFromAgent(username)
+	//ret, cred := git.NewCredSshKey("git", "/home/andpaul/.ssh/andpaul.pub", "/home/andpaul/.ssh/andpaul", "")
+	return git.ErrorCode(ret), &cred
+}
+
 func executeGitCommand(args []string) string {
 	Debugf("Executing git " + strings.Join(args, " "))
 	before := time.Now()
@@ -141,42 +151,40 @@ func executeGitCommand(args []string) string {
 }
 
 func compareGitVersions(targetDir string, url string, branch string) bool {
-	localChan := make(chan string)
-	remoteChan := make(chan string)
+	//localChan := make(chan string)
+	//remoteChan := make(chan string)
 
-	go func() {
-		localArgs := []string{}
-		localArgs = append(localArgs, "--git-dir")
-		localArgs = append(localArgs, targetDir+"/.git")
-		localArgs = append(localArgs, "rev-parse")
-		localArgs = append(localArgs, "HEAD")
+	//go func() {
+	// get localVersion
+	localRepo, err := git.OpenRepository(targetDir)
+	if err != nil {
+		panic(err)
+	}
+	localHead, err := localRepo.Head()
+	if err != nil {
+		panic(err)
+	}
 
-		localOut := executeGitCommand(localArgs)
-		localVersion := string(localOut[:len(localOut)-1])
-		Debugf("git output: " + localVersion)
-		Debugf("localVersion: " + localVersion)
-		localChan <- localVersion
-	}()
+	//localChan <- localVersion
+	//}()
 
-	go func() {
-		remoteArgs := []string{}
-		remoteArgs = append(remoteArgs, "ls-remote")
-		remoteArgs = append(remoteArgs, "--heads")
-		remoteArgs = append(remoteArgs, url)
-		remoteArgs = append(remoteArgs, branch)
+	rc := git.RemoteCollection{
+		repo: localRepo,
+	}
 
-		remoteVersion := executeGitCommand(remoteArgs)
-		Debugf("git output: " + remoteVersion)
+	remote, err := localRepo.Lookup("origin")
 
-		remoteLine := strings.Split(string(remoteVersion), "\t")
-		if remoteLine != nil && len(remoteLine) > 0 {
-			remoteVersion = remoteLine[0]
-		}
+	//if localHead.Cmp(remoteHead) != 0 {
+	//	return false
+	//} else {
+	//	return true
+	//}
 
-		Debugf("remoteVersion: " + remoteVersion)
-		remoteChan <- remoteVersion
-	}()
-	return <-remoteChan != <-localChan
+	//go func() {
+	//		remoteChan <- remoteVersion
+	//	}()
+	//	return <-remoteChan != <-localChan
+	return true
 }
 
 func resolveGitRepositories(repos map[string]string) {
@@ -234,19 +242,30 @@ func resolveGitRepositories(repos map[string]string) {
 					args = append(args, "--git-dir")
 					args = append(args, targetDir+"/.git")
 					args = append(args, "pull")
+					executeGitCommand(args)
 
 				} else {
-					args = append(args, "clone")
-					args = append(args, "--branch")
-					args = append(args, branch)
-					args = append(args, "--single-branch")
-					args = append(args, "--depth")
-					args = append(args, "1")
-					args = append(args, url)
-					args = append(args, targetDir)
+					// https://golog.co/blog/article/Git2Go
+					cloneOptions := &git.CloneOptions{}
+					cloneOptions.CheckoutBranch = branch
+					cloneOptions.Bare = true
+					cloneOptions.FetchOptions = &git.FetchOptions{
+						RemoteCallbacks: git.RemoteCallbacks{
+							CredentialsCallback: credentialsCallback,
+							CertificateCheckCallback: func(cert *git.Certificate, valid bool, hostname string) git.ErrorCode {
+								return 0
+							},
+						},
+					}
+
+					before := time.Now()
+					_, err := git.Clone(url, targetDir, cloneOptions)
+					if err != nil {
+						panic(err)
+					}
+					Verbosef("git clone for " + url + " took " + strconv.FormatFloat(time.Since(before).Seconds(), 'f', 5, 64) + "s")
 
 				}
-				executeGitCommand(args)
 			} else {
 				Debugf("Nothing to do for Git repository '" + n + "': remote and local version are the same")
 			}
