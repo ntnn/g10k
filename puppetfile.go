@@ -60,10 +60,17 @@ func resolvePuppetEnvironment(envBranch string) {
 							if _, err := os.Stat(targetDir + "Puppetfile"); os.IsNotExist(err) {
 								Debugf("Skipping branch " + source + "_" + branch + " because " + targetDir + "Puppetfile does not exitst")
 							} else {
-								puppetfile := readPuppetfile(targetDir, sa.PrivateKey)
-								mutex.Lock()
-								allPuppetfiles[source+"_"+branch] = puppetfile
-								mutex.Unlock()
+								if _, err := os.Stat(targetDir + "Puppetfile.toml"); os.IsNotExist(err) {
+									puppetfile := readPuppetfileToml(targetDir, sa.PrivateKey)
+									mutex.Lock()
+									allPuppetfiles[source+"_"+branch] = puppetfile
+									mutex.Unlock()
+								} else {
+									puppetfile := readPuppetfile(targetDir, sa.PrivateKey)
+									mutex.Lock()
+									allPuppetfiles[source+"_"+branch] = puppetfile
+									mutex.Unlock()
+								}
 
 							}
 						}

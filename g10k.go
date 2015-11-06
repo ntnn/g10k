@@ -124,16 +124,16 @@ func main() {
 	before := time.Now()
 	envText := *configFile
 	if len(*envBranchFlag) > 0 {
-		resolvePuppetEnvironment(*envBranchFlag)
+		//resolvePuppetEnvironment(*envBranchFlag)
 		envText += " with branch " + *envBranchFlag
 	} else {
-		resolvePuppetEnvironment("")
+		//resolvePuppetEnvironment("")
 	}
 
 	// DEBUG
-	//pf := make(map[string]Puppetfile)
+	pf := make(map[string]Puppetfile)
 	//pf["core_fullmanaged"] = readPuppetfile("/tmp/core/core_fullmanaged/", "/home/andpaul/dev/go/src/github.com/xorpaul/g10k/portal_envs")
-	//pf["itodsi_corosync"] = readPuppetfile("/tmp/itodsi/itodsi_corosync/", "/home/andpaul/dev/go/src/github.com/xorpaul/g10k/portal_envs")
+	pf["itodsi_corosync"] = readPuppetfileToml("/tmp/example/example_toml/", "/home/andpaul/dev/go/src/github.com/xorpaul/g10k/portal_envs")
 	//resolvePuppetfile(pf)
 	//resolveGitRepositories(config)
 	//resolveForgeModules(configSettings.forge)

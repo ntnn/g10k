@@ -190,3 +190,21 @@ func readPuppetfile(targetDir string, sshKey string) Puppetfile {
 	//fmt.Println(puppetFile)
 	return puppetFile
 }
+
+// readPuppetfileToml creates the ConfigSettings struct from the Puppetfile
+func readPuppetfileToml(targetDir string, sshKey string) Puppetfile {
+	var puppetFile Puppetfile
+	puppetFile.privateKey = sshKey
+	puppetFile.forgeModules = map[string]ForgeModule{}
+	puppetFile.gitModules = map[string]GitModule{}
+	pf := targetDir + "Puppetfile.toml"
+	if _, err := os.Stat(pf); os.IsNotExist(err) {
+		Debugf("readPuppetfileToml(): No Puppetfile.toml found in " + targetDir)
+	} else {
+		Debugf("readPuppetfileToml(): Trying to parse: " + pf)
+
+	}
+
+	fmt.Println(puppetFile)
+	return puppetFile
+}
