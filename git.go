@@ -109,7 +109,7 @@ func syncToModuleDir(srcDir string, targetDir string, tree string, allowFail boo
 			gitCmd := exec.Command("git", "--git-dir", srcDir, "archive", tree)
 			stdout, err := gitCmd.StdoutPipe()
 			if err != nil {
-				// TODO: error handling
+				Fatalf("syncToModuleDir(): Failed to get stdout pipe from git command")
 				return false
 			}
 
