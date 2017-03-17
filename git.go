@@ -104,13 +104,32 @@ func syncToModuleDir(srcDir string, targetDir string, tree string, allowFail boo
 		mutex.Unlock()
 		if !dryRun {
 			createOrPurgeDir(targetDir, "syncToModuleDir()")
-			cmd := "git --git-dir " + srcDir + " archive '" + tree + "' | tar -x -C " + targetDir
+
+			// Create git command and grab stdout
+			gitCmd := exec.Command("git", "--git-dir", srcDir, "archive", tree)
+			stdout, err := gitCmd.StdoutPipe()
+			if err != nil {
+				// TODO: error handling
+				return false
+			}
+
+			// Create tar command and set its stdin to git's
+			// stdout
+			tarCmd := exec.Command("tar", "-x", "-C", targetDir)
+			tarCmd.Stdin = stdout
+
 			before := time.Now()
-			out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
+			err = gitCmd.Run()
+			if err != nil {
+				// TODO: error handling here
+				return false
+			}
+			out, err := tarCmd.CombinedOutput()
 			duration := time.Since(before).Seconds()
 			mutex.Lock()
 			ioGitTime += duration
 			mutex.Unlock()
+			cmd := strings.Join(gitCmd.Args, " ") + " | " + strings.Join(tarCmd.Args, " ")
 			Verbosef("syncToModuleDir(): Executing " + cmd + " took " + strconv.FormatFloat(duration, 'f', 5, 64) + "s")
 			if err != nil {
 				if !allowFail {
