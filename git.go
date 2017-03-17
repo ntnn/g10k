@@ -119,11 +119,10 @@ func syncToModuleDir(srcDir string, targetDir string, tree string, allowFail boo
 			tarCmd.Stdin = stdout
 
 			before := time.Now()
-			err = gitCmd.Run()
-			if err != nil {
-				// TODO: error handling here
-				return false
-			}
+			go func() {
+				_ = gitCmd.Run()
+			}()
+
 			out, err := tarCmd.CombinedOutput()
 			duration := time.Since(before).Seconds()
 			mutex.Lock()
